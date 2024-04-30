@@ -1,0 +1,180 @@
+---
+title: "Thrishul Final Project"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(leaflet)
+
+
+airbnb_data <- read.csv("C:/Users/Sunny/Documents/threads/air-bnb-listings.csv", sep = ";")
+
+```
+
+
+```{r}
+
+colnames(airbnb_data) <- make.names(tolower(gsub(" ", "_", colnames(airbnb_data))))
+
+airbnb_data <- airbnb_data %>%
+  filter(!is.na(room.price) & !is.na(coordinates))
+
+
+airbnb_data$minimum.nights <- as.integer(airbnb_data$minimum.nights)
+
+airbnb_data <- airbnb_data %>%
+  separate(coordinates, into = c("latitude", "longitude"), sep = ",", convert = TRUE)
+
+airbnb_data <- distinct(airbnb_data)
+
+quantile_limit <- quantile(airbnb_data$room.price, 0.99, na.rm = TRUE)
+airbnb_data <- airbnb_data %>%
+  filter(room.price <= quantile_limit)
+
+
+
+```
+Airbnb NY Visualization
+===================================================================
+## Column {.tabset .tabset-fade }
+
+### Room Prices by Room Type {data-width="350"}
+
+```{r}
+ggplot(airbnb_data, aes(x = room.type, y = room.price)) +
+  geom_boxplot() +
+  labs(title = "Room Prices by Room Type",
+       x = "Room Type",
+       y = "Price") +
+  theme_minimal() +
+  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8)) # Adjust top, right, bottom, left margins as needed
+
+```
+
+### Distribution of Room Prices
+
+
+```{r}
+library(ggplot2)
+library(plotly)
+
+# Define the breaks for the price bins and create labels for them
+breaks <- seq(from = 0, to = max(airbnb_data$room.price, na.rm = TRUE), by = 50)
+labels <- paste(head(breaks, -1), tail(breaks, -1), sep = "-")
+
+# Create a factor column with the price ranges using the labels
+airbnb_data$price_range <- cut(airbnb_data$room.price, breaks = breaks, labels = labels, include.lowest = TRUE, right = FALSE)
+
+# Calculate the count for each price range bin
+price_range_counts <- airbnb_data %>%
+  group_by(price_range) %>%
+  summarise(count = n())
+
+# Join the counts back onto the original data frame
+airbnb_data <- left_join(airbnb_data, price_range_counts, by = "price_range")
+
+# Create the ggplot object
+p <- ggplot(airbnb_data, aes(x = room.price, fill = price_range)) +
+  geom_histogram(binwidth = 50, color = "black") +
+  scale_fill_viridis_d(guide = FALSE) +
+  labs(title = "Distribution of Room Prices",
+       x = "Room Price ($)",
+       y = "Count") +
+  theme_minimal()
+
+# Convert the ggplot object to a plotly interactive graph, including the count in the tooltip
+ggplotly(p, tooltip = c("fill", "count"))
+```
+
+
+
+### Count of Room Types
+```{r}
+# Create a bar chart of Room Types
+ggplot(airbnb_data, aes(x = room.type)) +
+  geom_bar(fill = "cyan", color = "black") +
+  labs(title = "Count of Room Types",
+       x = "Room Type",
+       y = "Count")
+
+```
+
+
+
+### Room Price vs. Number of Reviews
+
+```{r}
+# Create a scatter plot of Price vs. Number of Reviews
+ggplot(airbnb_data, aes(x = number.of.reviews, y = room.price)) +
+  geom_point(alpha = 0.5, color = "red") +
+  labs(title = "Room Price vs. Number of Reviews",
+       x = "Number of Reviews",
+       y = "Room Price ($)")
+
+
+```
+
+
+
+### Spatial Distribution of Airbnb Listings
+
+```{r}
+library(ggplot2)
+
+ggplot(airbnb_data, aes(x = longitude, y = latitude)) +
+  geom_point(aes(color = room.price), alpha = 0.5, size = 1) +
+  scale_color_viridis_c() +
+  labs(title = "Spatial Distribution of Airbnb Listings",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Price") +
+  theme_minimal()
+```
+
+
+
+### Map of listings
+
+```{r}
+
+# Assuming airbnb_data is loaded and contains 'longitude' and 'latitude' columns
+# Create a color palette for room prices
+pal <- colorNumeric(palette = "viridis", domain = airbnb_data$room.price)
+
+# Create the leaflet map
+leaflet(airbnb_data) %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addCircleMarkers(
+    lng = ~longitude, lat = ~latitude,
+    color = ~pal(room.price),
+    opacity = 1, fillOpacity = 0.8,
+    radius = 5,  # Static radius for each marker
+    popup = ~paste("Price: $", room.price, "<br>",
+                   "Neighbourhood: ", neighbourhood),
+    clusterOptions = markerClusterOptions()  # Cluster options enable here
+  ) %>%
+  addLegend("bottomright", pal = pal, values = ~room.price,
+            title = "Room Price",
+            opacity = 1)
+```
+
+### References
+
+- Prepared the dashboard based on instructions given by Magallanes Reyes (2024).
+- Airbnb listings dataset provided by [OpenDataSoft](https://public.opendatasoft.com/explore/dataset/air-bnb-listings/table/?disjunctive.neighbourhood&disjunctive.column_10&disjunctive.city&refine.city=New-york-city&dataChart=eyJxdWVyaWVzIjpbeyJjaGFydHMiOlt7InR5cGUiOiJsaW5lIiwiZnVuYyI6IkFWRyIsInlBeGlzIjoiaWQiLCJzY2llbnRpZmljRGlzcGxheSI6dHJ1ZSwiY29sb3IiOiIjRkY1MTVBIn1dLCJ4QXhpcyI6InVwZGF0ZWRfZGF0ZSIsIm1heHBvaW50cyI6IiIsInRpbWVzY2FsZSI6InllYXIiLCJzb3J0IjoiIiwiY29uZmlnIjp7ImRhdGFzZXQiOiJhaXItYm5iLWxpc3RpbmdzIiwib3B0aW9ucyI6eyJkaXNqdW5jdGl2ZS5uZWlnaGJvdXJob29kIjp0cnVlLCJkaXNqdW5jdGl2ZS5jb2x1bW5fMTAiOnRydWUsImRpc2p1bmN0aXZlLmNpdHkiOnRydWUsInJlZmluZS5jaXR5IjoiTmV3LXlvcmstY2l0eSJ9fX1dLCJkaXNwbGF5TGVnZW5kIjp0cnVlLCJhbGlnbk1vbnRoIjp0cnVlfQ%3D%3D&location=11,40.60483,-73.84151&basemap=jawg.light).
+- R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+- Hadley Wickham, Mara Averick, Jennifer Bryan, Winston Chang, Lucy D’Agostino McGowan, Romain François, Garrett Grolemund, et al. (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686.
+- Leaflet for R, maintained by the RStudio team, used for creating interactive maps. URL: https://rstudio.github.io/leaflet/
+- ggplot2 package for creating advanced plots, authored by Hadley Wickham. URL: https://ggplot2.tidyverse.org
+- plotly: Create Interactive Web Graphics via 'plotly.js'. Carson Sievert. R package version 4.9.2.1. https://CRAN.R-project.org/package=plotly
+- Flexdashboard: Easy interactive dashboards for R, by RStudio, Inc. URL: https://rmarkdown.rstudio.com/flexdashboard/
+
+
+
