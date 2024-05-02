@@ -43,6 +43,13 @@ airbnb_data <- airbnb_data %>%
 
 # Airbnb NY Visualization
 
+## Intro {.sidebar}
+
+- Code Repository: You can find the complete source code for this dashboard on : [GitHub](https://github.com/thrishulpola/FinalSubmission)
+-   Prepared the dashboard based on instructions given by Magallanes Reyes (2024)
+-   Data Source: The Airbnb listings dataset is publicly available via  [OpenDataSoft](https://public.opendatasoft.com/explore/dataset/air-bnb-listings/table/?disjunctive.neighbourhood&disjunctive.column_10&disjunctive.city&refine.city=New-york-city&dataChart=eyJxdWVyaWVzIjpbeyJjaGFydHMiOlt7InR5cGUiOiJsaW5lIiwiZnVuYyI6IkFWRyIsInlBeGlzIjoiaWQiLCJzY2llbnRpZmljRGlzcGxheSI6dHJ1ZSwiY29sb3IiOiIjRkY1MTVBIn1dLCJ4QXhpcyI6InVwZGF0ZWRfZGF0ZSIsIm1heHBvaW50cyI6IiIsInRpbWVzY2FsZSI6InllYXIiLCJzb3J0IjoiIiwiY29uZmlnIjp7ImRhdGFzZXQiOiJhaXItYm5iLWxpc3RpbmdzIiwib3B0aW9ucyI6eyJkaXNqdW5jdGl2ZS5uZWlnaGJvdXJob29kIjp0cnVlLCJkaXNqdW5jdGl2ZS5jb2x1bW5fMTAiOnRydWUsImRpc2p1bmN0aXZlLmNpdHkiOnRydWUsInJlZmluZS5jaXR5IjoiTmV3LXlvcmstY2l0eSJ9fX1dLCJkaXNwbGF5TGVnZW5kIjp0cnVlLCJhbGlnbk1vbnRoIjp0cnVlfQ%3D%3D&location=11,40.60483,-73.84151&basemap=jawg.light).
+
+
 ## Column {.tabset .tabset-fade}
 
 ### Room Prices by Room Type {data-width="350"}
@@ -50,11 +57,15 @@ airbnb_data <- airbnb_data %>%
 ```{r}
 ggplot(airbnb_data, aes(x = room.type, y = room.price)) +
   geom_boxplot() +
-  labs(title = "Room Prices by Room Type",
+  labs(title = "Room Prices in New York by Room Type",
+       subtitle = "Location: New York",
        x = "Room Type",
-       y = "Price") +
+       y = "Price",
+       caption = "Data Source: OpenDataSoft - Airbnb listings") +
   theme_minimal() +
-  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8)) # Adjust top, right, bottom, left margins as needed
+  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8),
+        plot.caption = element_text(hjust = 0))  # Align caption text to the left
+
 
 ```
 
@@ -63,33 +74,29 @@ ggplot(airbnb_data, aes(x = room.type, y = room.price)) +
 ```{r}
 library(ggplot2)
 library(plotly)
+library(dplyr)
 
-# Define the breaks for the price bins and create labels for them
-breaks <- seq(from = 0, to = max(airbnb_data$room.price, na.rm = TRUE), by = 50)
-labels <- paste(head(breaks, -1), tail(breaks, -1), sep = "-")
+# Filter out entries with room price of 0
+filtered_data <- airbnb_data %>%
+  filter(room.price > 0)
 
-# Create a factor column with the price ranges using the labels
-airbnb_data$price_range <- cut(airbnb_data$room.price, breaks = breaks, labels = labels, include.lowest = TRUE, right = FALSE)
-
-# Calculate the count for each price range bin
-price_range_counts <- airbnb_data %>%
-  group_by(price_range) %>%
-  summarise(count = n())
-
-# Join the counts back onto the original data frame
-airbnb_data <- left_join(airbnb_data, price_range_counts, by = "price_range")
-
-# Create the ggplot object
-p <- ggplot(airbnb_data, aes(x = room.price, fill = price_range)) +
-  geom_histogram(binwidth = 50, color = "black") +
-  scale_fill_viridis_d(guide = FALSE) +
+# Create the histogram using ggplot
+p <- ggplot(filtered_data, aes(x = room.price)) +
+  geom_histogram(binwidth = 50, color = "black", fill = "blue") +
   labs(title = "Distribution of Room Prices",
+       subtitle = "Location: New York",
        x = "Room Price ($)",
-       y = "Count") +
-  theme_minimal()
+       y = "Count",
+       caption = "Data Source: OpenDataSoft - Airbnb listings") +
+  theme_minimal() +
+  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8),
+        plot.caption = element_text(hjust = 0))
 
-# Convert the ggplot object to a plotly interactive graph, including the count in the tooltip
-ggplotly(p, tooltip = c("fill", "count"))
+# Display the plot
+print(p)
+
+
+
 ```
 
 ### Count of Room Types
@@ -98,9 +105,12 @@ ggplotly(p, tooltip = c("fill", "count"))
 # Create a bar chart of Room Types
 ggplot(airbnb_data, aes(x = room.type)) +
   geom_bar(fill = "cyan", color = "black") +
-  labs(title = "Count of Room Types",
+  labs(title = "Count of Room Types", subtitle = "Location: New York",
        x = "Room Type",
-       y = "Count")
+       y = "Count", caption = "Data Source: OpenDataSoft - Airbnb listings")  +
+  theme_minimal() +
+  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8),
+        plot.caption = element_text(hjust = 0))
 
 ```
 
@@ -112,7 +122,10 @@ ggplot(airbnb_data, aes(x = number.of.reviews, y = room.price)) +
   geom_point(alpha = 0.5, color = "red") +
   labs(title = "Room Price vs. Number of Reviews",
        x = "Number of Reviews",
-       y = "Room Price ($)")
+       y = "Room Price ($)", subtitle = "Location: New York", caption = "Data Source: OpenDataSoft - Airbnb listings")  +
+  theme_minimal() +
+  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8),
+        plot.caption = element_text(hjust = 0))
 
 
 ```
@@ -128,8 +141,10 @@ ggplot(airbnb_data, aes(x = longitude, y = latitude)) +
   labs(title = "Spatial Distribution of Airbnb Listings",
        x = "Longitude",
        y = "Latitude",
-       color = "Price") +
-  theme_minimal()
+       color = "Price", subtitle = "Location: New York", caption = "Data Source: OpenDataSoft - Airbnb listings") +
+  theme_minimal() +
+  theme(plot.margin = margin(t = 8, r = 8, b = 8, l = 8),
+        plot.caption = element_text(hjust = 0))
 ```
 
 ### Map of listings
@@ -159,9 +174,6 @@ leaflet(airbnb_data) %>%
 
 ### References
 
--   You can find the code for this dashboard here: <https://github.com/thrishulpola/FinalSubmission>
--   Prepared the dashboard based on instructions given by Magallanes Reyes (2024).
--   Airbnb listings dataset provided by [OpenDataSoft](https://public.opendatasoft.com/explore/dataset/air-bnb-listings/table/?disjunctive.neighbourhood&disjunctive.column_10&disjunctive.city&refine.city=New-york-city&dataChart=eyJxdWVyaWVzIjpbeyJjaGFydHMiOlt7InR5cGUiOiJsaW5lIiwiZnVuYyI6IkFWRyIsInlBeGlzIjoiaWQiLCJzY2llbnRpZmljRGlzcGxheSI6dHJ1ZSwiY29sb3IiOiIjRkY1MTVBIn1dLCJ4QXhpcyI6InVwZGF0ZWRfZGF0ZSIsIm1heHBvaW50cyI6IiIsInRpbWVzY2FsZSI6InllYXIiLCJzb3J0IjoiIiwiY29uZmlnIjp7ImRhdGFzZXQiOiJhaXItYm5iLWxpc3RpbmdzIiwib3B0aW9ucyI6eyJkaXNqdW5jdGl2ZS5uZWlnaGJvdXJob29kIjp0cnVlLCJkaXNqdW5jdGl2ZS5jb2x1bW5fMTAiOnRydWUsImRpc2p1bmN0aXZlLmNpdHkiOnRydWUsInJlZmluZS5jaXR5IjoiTmV3LXlvcmstY2l0eSJ9fX1dLCJkaXNwbGF5TGVnZW5kIjp0cnVlLCJhbGlnbk1vbnRoIjp0cnVlfQ%3D%3D&location=11,40.60483,-73.84151&basemap=jawg.light).
 -   R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL <https://www.R-project.org/>.
 -   Hadley Wickham, Mara Averick, Jennifer Bryan, Winston Chang, Lucy D'Agostino McGowan, Romain François, Garrett Grolemund, et al. (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686.
 -   Leaflet for R, maintained by the RStudio team, used for creating interactive maps. URL: <https://rstudio.github.io/leaflet/>
